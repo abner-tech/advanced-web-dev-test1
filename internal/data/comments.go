@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/abner-tech/Comments-Api.git/internal/validator"
+	"github.com/abner-tech/Test1/internal/validator"
 )
 
 // each name begins with uppercase to make them exportable/ public

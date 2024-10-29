@@ -3,7 +3,7 @@ package data
 import (
 	"strings"
 
-	"github.com/abner-tech/Comments-Api.git/internal/validator"
+	"github.com/abner-tech/Test1/internal/validator"
 )
 
 //the Filters type will contain the fields related to pagination

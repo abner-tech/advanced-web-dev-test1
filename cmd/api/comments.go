@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/abner-tech/Comments-Api.git/internal/data"
-	"github.com/abner-tech/Comments-Api.git/internal/validator"
+	"github.com/abner-tech/Test1/internal/data"
+	"github.com/abner-tech/Test1/internal/validator"
 )
 
 func (a *applicationDependences) createCommentHandler(w http.ResponseWriter, r *http.Request) {

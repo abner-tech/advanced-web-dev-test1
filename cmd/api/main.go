@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/abner-tech/Comments-Api.git/internal/data"
+	"github.com/abner-tech/Test1/internal/data"
 	_ "github.com/lib/pq"
 )
 
@@ -35,7 +35,7 @@ func main() {
 	flag.IntVar(&settings.port, "port", 4000, "Server Port")
 	flag.StringVar(&settings.environment, "env", "development", "Environment(development|staging|production)")
 	//read the dsn
-	flag.StringVar(&settings.db.dsn, "db-dsn", "postgres://comments:comments@localhost/comments?sslmode=disable", "PostgreSQL DSN")
+	flag.StringVar(&settings.db.dsn, "db-dsn", "postgres://test1:test1@localhost/test1?sslmode=disable", "PostgreSQL DSN")
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
