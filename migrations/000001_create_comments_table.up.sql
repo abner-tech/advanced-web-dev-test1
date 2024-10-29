@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS products (
 --script to create the reviews table
 CREATE TABLE IF NOT EXISTS reviews (
     id bigserial PRIMARY KEY,
-    procuct_id INT NOT NULL REFERENCES product(id) ON DELETE CASCADE, --foreign key
+    product_id INT NOT NULL REFERENCES product(id) ON DELETE CASCADE, --foreign key
     user_name VARCHAR(255), --name of user who posted the rating message and value
     rating INT CHECK(rating BETWEEN 1 AND 5), --rating value between 1 and 5
     review_text TEXT, --rating message
@@ -31,7 +31,7 @@ BEGIN
     UPDATE products
     SET average_rating = (
         SELECT ROUND(AVG(rating), 2)
-        FROM review_text
+        FROM reviews
         WHERE products.id = NEW.product_id;
     )
     WHERE id = NEW.procuct_id;
