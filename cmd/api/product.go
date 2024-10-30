@@ -9,12 +9,16 @@ import (
 	"github.com/abner-tech/Test1/internal/validator"
 )
 
-func (a *applicationDependences) createCommentHandler(w http.ResponseWriter, r *http.Request) {
+func (a *applicationDependences) createProductHandler(w http.ResponseWriter, r *http.Request) {
 	//create a struct to hold a comment
 	//we use struct tags [` `] to make the names display in lowercase
 	var incomingData struct {
-		Content string `json:"content"`
-		Author  string `json:"author"`
+		Name          string  `json:"name"`
+		Description   string  `json:"description"`
+		Price         float32 `json:"price"`
+		Category      string  `json:"category"`
+		ImageUrl      string  `json:"image_url"`
+		AverageRating float32 `json:"average_rating"`
 	}
 
 	//perform decoding
@@ -25,21 +29,25 @@ func (a *applicationDependences) createCommentHandler(w http.ResponseWriter, r *
 		return
 	}
 
-	comment := &data.Comment{
-		Content: incomingData.Content,
-		Author:  incomingData.Author,
+	product := &data.Product{
+		Name:          incomingData.Name,
+		Description:   incomingData.Description,
+		Price:         incomingData.Price,
+		Category:      incomingData.Category,
+		ImageUrl:      incomingData.ImageUrl,
+		AverageRating: incomingData.AverageRating,
 	}
 
 	v := validator.New()
 	//do validation
-	data.ValidateComment(v, comment)
+	data.ValidateProduct(v, product)
 	if !v.IsEmpty() {
 		a.failedValidationResponse(w, r, v.Errors) //implemented later
 		return
 	}
 
 	//add comment to the comments table in database
-	err = a.commentModel.Insert(comment)
+	err = a.productModel.Insert(product)
 	if err != nil {
 		a.serverErrorResponse(w, r, err)
 		return
@@ -50,11 +58,11 @@ func (a *applicationDependences) createCommentHandler(w http.ResponseWriter, r *
 
 	//set a location header, the path to the newly created comments
 	headers := make(http.Header)
-	headers.Set("Location", fmt.Sprintf("/v1/comments/%d", comment.ID))
+	headers.Set("Location", fmt.Sprintf("/v1/product/%d", product.ID))
 
 	//send a json response with a 201 (new reseource created) status code
 	data := envelope{
-		"comment": comment,
+		"product": product,
 	}
 	err = a.writeJSON(w, http.StatusCreated, data, headers)
 	if err != nil {
@@ -63,7 +71,7 @@ func (a *applicationDependences) createCommentHandler(w http.ResponseWriter, r *
 	}
 }
 
-func (a *applicationDependences) fetchCommentByID(w http.ResponseWriter, r *http.Request) (*data.Comment, error) {
+func (a *applicationDependences) fetchProductByID(w http.ResponseWriter, r *http.Request) (*data.Product, error) {
 	// Get the id from the URL /v1/comments/:id so that we
 	// can use it to query the comments table. We will
 	// implement the readIDParam() function later
@@ -74,7 +82,7 @@ func (a *applicationDependences) fetchCommentByID(w http.ResponseWriter, r *http
 	}
 
 	// Call Get() to retrieve the comment with the specified id
-	comment, err := a.commentModel.Get(id)
+	product, err := a.productModel.Get(id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -84,18 +92,18 @@ func (a *applicationDependences) fetchCommentByID(w http.ResponseWriter, r *http
 		}
 
 	}
-	return comment, nil
+	return product, nil
 }
 
-func (a *applicationDependences) displayCommentHandler(w http.ResponseWriter, r *http.Request) {
+func (a *applicationDependences) displayProductHandler(w http.ResponseWriter, r *http.Request) {
 
-	comment, err := a.fetchCommentByID(w, r)
+	product, err := a.fetchProductByID(w, r)
 	if err != nil {
 		return
 	}
 	// display the comment
 	data := envelope{
-		"comment": comment,
+		"product": product,
 	}
 	err = a.writeJSON(w, http.StatusOK, data, nil)
 	if err != nil {
@@ -107,7 +115,7 @@ func (a *applicationDependences) displayCommentHandler(w http.ResponseWriter, r 
 
 func (a *applicationDependences) updateCommentHandler(w http.ResponseWriter, r *http.Request) {
 
-	comment, err := a.fetchCommentByID(w, r)
+	product, err := a.fetchProductByID(w, r)
 	if err != nil {
 		return
 	}
@@ -117,8 +125,12 @@ func (a *applicationDependences) updateCommentHandler(w http.ResponseWriter, r *
 	// between the client leaving a field empty intentionally
 	// and the field not needing to be updated
 	var incomingData struct {
-		Content *string `json:"content"`
-		Author  *string `json:"author"`
+		Name          *string  `json:"name"`
+		Description   *string  `json:"description"`
+		Price         *float32 `json:"price"`
+		Category      *string  `json:"category"`
+		ImageUrl      *string  `json:"image_url"`
+		AverageRating *float32 `json:"average_rating"`
 	}
 
 	// perform the decoding
@@ -129,30 +141,41 @@ func (a *applicationDependences) updateCommentHandler(w http.ResponseWriter, r *
 	}
 	// We need to now check the fields to see which ones need updating
 	// if incomingData.Content is nil, no update was provided
-	if incomingData.Content != nil {
-		comment.Content = *incomingData.Content
+	if incomingData.Name != nil {
+		product.Name = *incomingData.Name
 	}
-	// if incomingData.Author is nil, no update was provided
-	if incomingData.Author != nil {
-		comment.Author = *incomingData.Author
+	if incomingData.Description != nil {
+		product.Description = *incomingData.Description
+	}
+	if incomingData.Price != nil {
+		product.Price = *incomingData.Price
+	}
+	if incomingData.Category != nil {
+		incomingData.Category = *&incomingData.Category
+	}
+	if incomingData.ImageUrl != nil {
+		incomingData.ImageUrl = *&incomingData.ImageUrl
+	}
+	if incomingData.AverageRating != nil {
+		incomingData.AverageRating = *&incomingData.AverageRating
 	}
 
 	// Before we write the updates to the DB let's validate
 	v := validator.New()
-	data.ValidateComment(v, comment)
+	data.ValidateProduct(v, product)
 	if !v.IsEmpty() {
 		a.failedValidationResponse(w, r, v.Errors)
 		return
 	}
 
 	// perform the update
-	err = a.commentModel.Update(comment)
+	err = a.productModel.Update(product)
 	if err != nil {
 		a.serverErrorResponse(w, r, err)
 		return
 	}
 	data := envelope{
-		"comment": comment,
+		"product": product,
 	}
 	err = a.writeJSON(w, http.StatusOK, data, nil)
 	if err != nil {
@@ -168,7 +191,7 @@ func (a *applicationDependences) deleteCommentHandler(w http.ResponseWriter, r *
 		a.notFoundResponse(w, r)
 		return
 	}
-	err = a.commentModel.Delete(id)
+	err = a.productModel.Delete(id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -179,9 +202,9 @@ func (a *applicationDependences) deleteCommentHandler(w http.ResponseWriter, r *
 		return
 	}
 
-	//diplay the comment
+	//diisplay the product
 	data := envelope{
-		"message": "comment deleted successfully",
+		"message": "product deleted successfully",
 	}
 	err = a.writeJSON(w, http.StatusOK, data, nil)
 	if err != nil {
@@ -193,8 +216,8 @@ func (a *applicationDependences) listCommentHandler(w http.ResponseWriter, r *ht
 	//create a struct to hold the query parameters
 	//Later, fields will be added for pagination and sorting (filters)
 	var queryParameterData struct {
-		Content string
-		Author  string
+		Category string
+		Name     string
 		data.Fileters
 	}
 
@@ -202,8 +225,8 @@ func (a *applicationDependences) listCommentHandler(w http.ResponseWriter, r *ht
 	queryParameter := r.URL.Query()
 
 	//load the query parameters into the created struct
-	queryParameterData.Content = a.getSingleQueryParameter(queryParameter, "content", "")
-	queryParameterData.Author = a.getSingleQueryParameter(queryParameter, "author", "")
+	queryParameterData.Category = a.getSingleQueryParameter(queryParameter, "category", "")
+	queryParameterData.Name = a.getSingleQueryParameter(queryParameter, "name", "")
 	v := validator.New()
 
 	queryParameterData.Fileters.Page = a.getSingleIntigerParameter(queryParameter, "page", 1, v)
@@ -219,7 +242,7 @@ func (a *applicationDependences) listCommentHandler(w http.ResponseWriter, r *ht
 	}
 
 	//call GetAll to retrieve all comments of the DB
-	comments, metadata, err := a.commentModel.GetAll(queryParameterData.Content, queryParameterData.Author, queryParameterData.Fileters)
+	products, metadata, err := a.productModel.GetAll(queryParameterData.Category, queryParameterData.Name, queryParameterData.Fileters)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -232,7 +255,7 @@ func (a *applicationDependences) listCommentHandler(w http.ResponseWriter, r *ht
 	}
 
 	data := envelope{
-		"comments":  comments,
+		"products":  products,
 		"@metadata": metadata,
 	}
 	err = a.writeJSON(w, http.StatusOK, data, nil)

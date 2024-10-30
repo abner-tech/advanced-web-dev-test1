@@ -27,7 +27,7 @@ type serverConfig struct {
 type applicationDependences struct {
 	config       serverConfig
 	logger       *slog.Logger
-	commentModel data.CommentModel
+	productModel data.ProductModel
 }
 
 func main() {
@@ -55,7 +55,7 @@ func main() {
 	appInstance := &applicationDependences{
 		config:       settings,
 		logger:       logger,
-		commentModel: data.CommentModel{DB: db},
+		productModel: data.ProductModel{DB: db},
 	}
 
 	apiServer := &http.Server{

@@ -11,30 +11,34 @@ import (
 )
 
 // each name begins with uppercase to make them exportable/ public
-type Comment struct {
-	ID        int64     `json:"id"`      //unique value per comment
-	Content   string    `json:"content"` //comment data
-	Author    string    `json:"author"`  //person who wrote comment
-	CreatedAt time.Time `json:"-"`       //database timestamp
-	Version   int32     `json:"version"` //icremented on each update
+type Product struct {
+	ID            int64     `json:"id"`
+	Name          string    `json:"name"`
+	Description   string    `json:"description"`
+	Price         float32   `json:"price"`
+	Category      string    `json:"category"`
+	ImageUrl      string    `json:"image_url"`
+	AverageRating float32   `json:"average-rating"`
+	CreatedAt     time.Time `json:"-"`
+	Version       int32     `json:"version"`
 }
 
 // commentModel that expects a connection pool
-type CommentModel struct {
+type ProductModel struct {
 	DB *sql.DB
 }
 
 // Insert Row to comments table
 // expects a pointer to the actual comment content
-func (c CommentModel) Insert(comment *Comment) error {
+func (c ProductModel) Insert(product *Product) error {
 	//the sql query to be executed against the database table
 	query := `
-	INSERT INTO comments (content, author)
-	VALUES ($1, $2)
+	INSERT INTO products (name, description, price, category, image_url)
+	VALUES ($1, $2, $3, $4, $5)
 	RETURNING id, created_at, version`
 
 	//the actual values to be passed into $1 and $2
-	args := []any{comment.Content, comment.Author}
+	args := []any{product.Name, product.Description, product.Price, product.Category, product.ImageUrl}
 
 	// Create a context with a 3-second timeout. No database
 	// operation should take more than 3 seconds or we will quit it
@@ -44,49 +48,68 @@ func (c CommentModel) Insert(comment *Comment) error {
 	// id, created_at, and version to be sent back to us which we will use
 	// to update the Comment struct later on
 	return c.DB.QueryRowContext(ctx, query, args...).Scan(
-		&comment.ID,
-		&comment.CreatedAt,
-		&comment.Version)
+		&product.ID,
+		&product.CreatedAt,
+		&product.Version)
 
 }
 
-func ValidateComment(v *validator.Validator, comment *Comment) {
-	//check if the content field is empty
-	v.Check(comment.Content != "", "content", "must be provided")
-	//check if the Author field is empty
-	v.Check(comment.Author != "", "author", "must be provided")
-	//check if the content field is empty
-	v.Check(len(comment.Content) <= 100, "content", "must not be more than 100 bytes long")
-	//check is author field is empty
-	v.Check(len(comment.Author) <= 25, "author", "must not be more than 25 bytes long")
+func ValidateProduct(v *validator.Validator, product *Product) {
+	// Validate Name
+	v.Check(product.Name != "", "name", "must be provided")
+	v.Check(len(product.Name) <= 50, "name", "must not be more than 50 bytes")
+
+	// Validate Description
+	v.Check(product.Description != "", "description", "must be provided")
+	v.Check(len(product.Description) <= 100, "description", "must not be more than 100 bytes")
+
+	// Validate Price (ensure it is a positive number)
+	v.Check(product.Price > 0, "price", "must be a positive value")
+
+	// Validate Category (ensure it is not empty)
+	v.Check(product.Category != "", "category", "must be provided")
+	v.Check(len(product.Category) <= 50, "category", "must not be more than 50 bytes")
+
+	// Validate ImageUrl (ensure it is a valid URL format and not empty)
+	v.Check(product.ImageUrl != "", "image_url", "must be provided")
+	v.Check(len(product.ImageUrl) <= 200, "image_url", "must not be more than 200 bytes")
+	// Optionally, add a regex or specific URL validation if needed
+
+	// Validate AverageRating (ensure it is between 0 and 5, as a standard rating scale)
+	v.Check(product.AverageRating >= 0 && product.AverageRating <= 5, "average_rating", "must be between 0 and 5")
+
 }
 
 // get a comment from DB based on ID
-func (c CommentModel) Get(id int64) (*Comment, error) {
+func (p ProductModel) Get(id int64) (*Product, error) {
 	//check if the id is valid
 	if id < 1 {
 		return nil, ErrRecordNotFound
 	}
 	//the sql query to be excecuted against the database table
 	query := `
-	SELECT id, created_at, content, author, version
-	FROM comments
+	SELECT id, name, description, price, category, image_url, average_rating, created_at, version
+	FROM products
 	WHERE id = $1
 	`
 
 	//declare a variable of type Comment to hold the returned values
-	var comment Comment
+	var product Product
 
 	//set 3-second context/timer
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := c.DB.QueryRowContext(ctx, query, id).Scan(
-		&comment.ID,
-		&comment.Content,
-		&comment.Content,
-		&comment.Author,
-		&comment.Version,
+	err := p.DB.QueryRowContext(ctx, query, id).Scan(
+		&product.ID,
+		&product.Name,
+		&product.Description,
+		&product.Price,
+		&product.Category,
+		&product.ImageUrl,
+		&product.AverageRating,
+		&product.CreatedAt,
+		&product.Version,
 	)
 	//check for errors
 	if err != nil {
@@ -97,16 +120,16 @@ func (c CommentModel) Get(id int64) (*Comment, error) {
 			return nil, err
 		}
 	}
-	return &comment, nil
+	return &product, nil
 }
 
-func (c CommentModel) GetAll(content string, author string, filters Fileters) ([]*Comment, Metadata, error) {
+func (p ProductModel) GetAll(content string, author string, filters Fileters) ([]*Product, Metadata, error) {
 	query := fmt.Sprintf(`
-	SELECT COUNT(*) OVER(), id, created_at, content, author, version
-	FROM comments
-	WHERE (to_tsvector('simple',content) @@
+	SELECT COUNT(*) OVER(), id, name, description, price, category, image_url, average_rating, created_at, version
+	FROM products
+	WHERE (to_tsvector('simple',description) @@
 		plainto_tsquery('simple', $1) OR $1 = '')
-	AND (to_tsvector('simple',author) @@
+	AND (to_tsvector('simple',name) @@
 		plainto_tsquery('simple',$2) OR $2 = '')
 	ORDER BY %s %s, id ASC
 	LIMIT $3 OFFSET $4
@@ -114,7 +137,7 @@ func (c CommentModel) GetAll(content string, author string, filters Fileters) ([
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	rows, err := c.DB.QueryContext(ctx, query, content, author, filters.limit(), filters.offset())
+	rows, err := p.DB.QueryContext(ctx, query, content, author, filters.limit(), filters.offset())
 	//check for errors
 	if err != nil {
 		switch {
@@ -127,15 +150,15 @@ func (c CommentModel) GetAll(content string, author string, filters Fileters) ([
 
 	defer rows.Close()
 	totalRecords := 0
-	cmts := []*Comment{}
+	products := []*Product{}
 
 	for rows.Next() {
-		var com Comment
-		err := rows.Scan(&totalRecords, &com.ID, &com.CreatedAt, &com.Content, &com.Author, &com.Version)
+		var prod Product
+		err := rows.Scan(&totalRecords, &prod.ID, &prod.Name, &prod.Description, &prod.Price, &prod.Category, &prod.ImageUrl, &prod.AverageRating, &prod.CreatedAt, &prod.Version)
 		if err != nil {
 			return nil, Metadata{}, err
 		}
-		cmts = append(cmts, &com)
+		products = append(products, &prod)
 	}
 	err = rows.Err()
 	if err != nil {
@@ -144,11 +167,11 @@ func (c CommentModel) GetAll(content string, author string, filters Fileters) ([
 
 	//create the metadata
 	metadata := calculateMetaData(totalRecords, filters.Page, filters.PageSize)
-	return cmts, metadata, nil
+	return products, metadata, nil
 }
 
 // update  a specific record from the comments table
-func (c CommentModel) Update(comment *Comment) error {
+func (p ProductModel) Update(product *Product) error {
 	//the sql query to be excecuted against the DB table
 	//Every time make an update, version number is incremented
 
@@ -159,15 +182,15 @@ func (c CommentModel) Update(comment *Comment) error {
 	RETURNING version
 	`
 
-	args := []any{comment.Content, comment.Author, comment.ID}
+	args := []any{product.AverageRating, product.Category, product.ID}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	return c.DB.QueryRowContext(ctx, query, args...).Scan(&comment.Version)
+	return p.DB.QueryRowContext(ctx, query, args...).Scan(&product.Version)
 
 }
 
 // delete a specific comment form the comments table
-func (c CommentModel) Delete(id int64) error {
+func (c ProductModel) Delete(id int64) error {
 	//check if the id is valid
 	if id < 1 {
 		return ErrRecordNotFound
