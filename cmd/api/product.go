@@ -78,6 +78,7 @@ func (a *applicationDependences) fetchProductByID(w http.ResponseWriter, r *http
 	id, err := a.readIDParam(r)
 	if err != nil {
 		a.notFoundResponse(w, r)
+		return nil, err
 	}
 
 	// Call Get() to retrieve the comment with the specified id
@@ -258,4 +259,28 @@ func (a *applicationDependences) listProductHandler(w http.ResponseWriter, r *ht
 		a.serverErrorResponse(w, r, err)
 		return
 	}
+}
+
+func (a *applicationDependences) productIdExist(w http.ResponseWriter, r *http.Request) int64 {
+	// Get the id from the URL /v1/comments/:id so that we
+	// can use it to query the comments table. We will
+	// implement the readIDParam() function later
+	id, err := a.readIDParam(r)
+	if err != nil {
+		a.notFoundResponse(w, r)
+		return 0
+	}
+
+	// Call Get() to retrieve the comment with the specified id
+	id, err = a.productModel.ProductExist(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			a.notFoundResponse(w, r)
+		default:
+			a.serverErrorResponse(w, r, err)
+		}
+
+	}
+	return id
 }

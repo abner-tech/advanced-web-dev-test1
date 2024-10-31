@@ -41,19 +41,14 @@ func (a *applicationDependences) create_P_ReviewHandler(w http.ResponseWriter, r
 		return
 	}
 
-	//verifying that  product exists
-	product, err := a.fetchProductByID(w, r)
-	if err != nil {
-		a.notFoundResponse(w, r)
+	//verifying that product review is being made for exists
+	id := a.productIdExist(w, r)
+	if id <= 0 {
+		//error is already printed if no record was found in the productidExists()
 		return
 	}
-
-	println(product.Category)
-
-	ID := product.ID
-
 	//adding review to the review table in DB
-	err = a.reviewModel.InsertReview(review, ID)
+	err = a.reviewModel.InsertReview(review, id)
 	if err != nil {
 		a.serverErrorResponse(w, r, err)
 		return
