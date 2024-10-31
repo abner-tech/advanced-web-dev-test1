@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -67,21 +68,46 @@ func (a *applicationDependences) create_P_ReviewHandler(w http.ResponseWriter, r
 	}
 }
 
-// func (a *applicationDependences) fetchReviewByID(w http.ResponseWriter, r *http.Request) (*data.Review, error) {
-// 	id, err := a.readIDParam(r)
-// 	if err != nil {
-// 		a.notFoundResponse(w, r)
-// 	}
+func (a *applicationDependences) fetchReviewByID(w http.ResponseWriter, r *http.Request) (*data.Review, error) {
+	pid, err := a.readIDParam(r, "pid")
+	if err != nil {
+		a.notFoundResponse(w, r)
+		return nil, err
+	}
 
-// 	review, err := a.reviewModel.GetReview(id)
-// 	if err != nil {
-// 		switch {
-// 		case errors.Is(err, data.ErrRecordNotFound):
-// 			a.notFoundResponse(w, r)
-// 		default:
-// 			a.serverErrorResponse(w, r, err)
-// 		}
+	rid, err := a.readIDParam(r, "rid")
+	if err != nil {
+		a.notFoundResponse(w, r)
+		return nil, err
+	}
 
-// 	}
-// 	return review, nil
-// }
+	review, err := a.reviewModel.GetReviewByIDS(rid, pid)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			a.notFoundResponse(w, r)
+			return nil, err
+		default:
+			a.serverErrorResponse(w, r, err)
+		}
+
+	}
+	return review, nil
+}
+
+func (a *applicationDependences) listSingleProductReviewHandler(w http.ResponseWriter, r *http.Request) {
+	review, err := a.fetchReviewByID(w, r)
+	if err != nil {
+		//error was already printed before so we just come out of function
+		return
+	}
+
+	data := envelope{
+		"review": review,
+	}
+
+	err = a.writeJSON(w, http.StatusOK, data, nil)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+	}
+}

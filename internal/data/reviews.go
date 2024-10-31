@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/abner-tech/Test1/internal/validator"
@@ -57,15 +58,41 @@ func ValidateReview(v *validator.Validator, review *Review) {
 	v.Check(len(review.ReviewText) <= 100, "review_text", "must not be more than 100 bytes")
 }
 
-// func (r ReviewModel) GetReview(id int64) (*Review, error) {
-// 	if id < 1 {
-// 		return nil, ErrRecordNotFound
-// 	}
+func (r ReviewModel) GetReviewByIDS(rid int64, pid int64) (*Review, error) {
+	//validate id
+	if pid < 1 || rid < 1 {
+		return nil, ErrRecordNotFound
+	}
 
-// 	//query
-// 	query := `SELECT id
-// 	FROM products
-// 	WHERE id = $1
-// 	`
+	//query
+	query := `SELECT id, product_id, user_name, rating, review_text, helpful_count, created_at, version
+	FROM reviews
+	WHERE id = $1 AND product_id = $2
+	`
+	var review Review
 
-// }
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := r.DB.QueryRowContext(ctx, query, rid, pid).Scan(
+		&review.ID,
+		&review.ProductID,
+		&review.UserName,
+		&review.Rating,
+		&review.ReviewText,
+		&review.HelpfulCount,
+		&review.CreatedAt,
+		&review.Version,
+	)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	return &review, nil
+
+}

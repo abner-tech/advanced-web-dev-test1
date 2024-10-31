@@ -75,7 +75,7 @@ func (a *applicationDependences) fetchProductByID(w http.ResponseWriter, r *http
 	// Get the id from the URL /v1/comments/:id so that we
 	// can use it to query the comments table. We will
 	// implement the readIDParam() function later
-	id, err := a.readIDParam(r)
+	id, err := a.readIDParam(r, "pid")
 	if err != nil {
 		a.notFoundResponse(w, r)
 		return nil, err
@@ -180,7 +180,7 @@ func (a *applicationDependences) updateProductHandler(w http.ResponseWriter, r *
 }
 
 func (a *applicationDependences) deleteProductHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := a.readIDParam(r)
+	id, err := a.readIDParam(r, "pid")
 	if err != nil {
 		a.notFoundResponse(w, r)
 		return
@@ -265,7 +265,7 @@ func (a *applicationDependences) productIdExist(w http.ResponseWriter, r *http.R
 	// Get the id from the URL /v1/comments/:id so that we
 	// can use it to query the comments table. We will
 	// implement the readIDParam() function later
-	id, err := a.readIDParam(r)
+	id, err := a.readIDParam(r, "pid")
 	if err != nil {
 		a.notFoundResponse(w, r)
 		return 0

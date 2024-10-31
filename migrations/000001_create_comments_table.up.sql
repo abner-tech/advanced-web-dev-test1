@@ -34,7 +34,7 @@ BEGIN
     SET average_rating = (
         SELECT ROUND(AVG(rating), 2)
         FROM reviews
-        WHERE products_id = NEW.product_id
+        WHERE product_id = NEW.product_id
     )
     WHERE id = NEW.product_id;
 
