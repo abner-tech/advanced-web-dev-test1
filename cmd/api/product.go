@@ -228,7 +228,7 @@ func (a *applicationDependences) listProductHandler(w http.ResponseWriter, r *ht
 	queryParameterData.Fileters.Page = a.getSingleIntigerParameter(queryParameter, "page", 1, v)
 	queryParameterData.Fileters.PageSize = a.getSingleIntigerParameter(queryParameter, "page_size", 10, v)
 	queryParameterData.Fileters.Sorting = a.getSingleQueryParameter(queryParameter, "sorting", "id")
-	queryParameterData.Fileters.SortSafeList = []string{"id", "name", "-id", "-name"}
+	queryParameterData.Fileters.SortSafeList = []string{"id", "id", "-id", "-id"}
 
 	//check validity of filters
 	data.ValidateFilters(v, queryParameterData.Fileters)
