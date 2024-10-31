@@ -46,8 +46,8 @@ func (a *applicationDependences) createProductHandler(w http.ResponseWriter, r *
 		return
 	}
 
-	//add comment to the comments table in database
-	err = a.productModel.Insert(product)
+	//add product to the products table in database
+	err = a.productModel.InsertProduct(product)
 	if err != nil {
 		a.serverErrorResponse(w, r, err)
 		return
@@ -78,11 +78,10 @@ func (a *applicationDependences) fetchProductByID(w http.ResponseWriter, r *http
 	id, err := a.readIDParam(r)
 	if err != nil {
 		a.notFoundResponse(w, r)
-
 	}
 
 	// Call Get() to retrieve the comment with the specified id
-	product, err := a.productModel.Get(id)
+	product, err := a.productModel.GetProduct(id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -110,10 +109,9 @@ func (a *applicationDependences) displayProductHandler(w http.ResponseWriter, r 
 		a.serverErrorResponse(w, r, err)
 		return
 	}
-
 }
 
-func (a *applicationDependences) updateCommentHandler(w http.ResponseWriter, r *http.Request) {
+func (a *applicationDependences) updateProductHandler(w http.ResponseWriter, r *http.Request) {
 
 	product, err := a.fetchProductByID(w, r)
 	if err != nil {
@@ -125,12 +123,11 @@ func (a *applicationDependences) updateCommentHandler(w http.ResponseWriter, r *
 	// between the client leaving a field empty intentionally
 	// and the field not needing to be updated
 	var incomingData struct {
-		Name          *string  `json:"name"`
-		Description   *string  `json:"description"`
-		Price         *float32 `json:"price"`
-		Category      *string  `json:"category"`
-		ImageUrl      *string  `json:"image_url"`
-		AverageRating *float32 `json:"average_rating"`
+		Name        *string  `json:"name"`
+		Description *string  `json:"description"`
+		Price       *float32 `json:"price"`
+		Category    *string  `json:"category"`
+		ImageUrl    *string  `json:"image_url"`
 	}
 
 	// perform the decoding
@@ -140,7 +137,7 @@ func (a *applicationDependences) updateCommentHandler(w http.ResponseWriter, r *
 		return
 	}
 	// We need to now check the fields to see which ones need updating
-	// if incomingData.Content is nil, no update was provided
+	// if incomingData.Name is nil, no update was provided
 	if incomingData.Name != nil {
 		product.Name = *incomingData.Name
 	}
@@ -151,13 +148,10 @@ func (a *applicationDependences) updateCommentHandler(w http.ResponseWriter, r *
 		product.Price = *incomingData.Price
 	}
 	if incomingData.Category != nil {
-		incomingData.Category = *&incomingData.Category
+		product.Category = *incomingData.Category
 	}
 	if incomingData.ImageUrl != nil {
-		incomingData.ImageUrl = *&incomingData.ImageUrl
-	}
-	if incomingData.AverageRating != nil {
-		incomingData.AverageRating = *&incomingData.AverageRating
+		product.ImageUrl = *incomingData.ImageUrl
 	}
 
 	// Before we write the updates to the DB let's validate
@@ -169,7 +163,7 @@ func (a *applicationDependences) updateCommentHandler(w http.ResponseWriter, r *
 	}
 
 	// perform the update
-	err = a.productModel.Update(product)
+	err = a.productModel.UpdateProducts(product)
 	if err != nil {
 		a.serverErrorResponse(w, r, err)
 		return
@@ -182,16 +176,15 @@ func (a *applicationDependences) updateCommentHandler(w http.ResponseWriter, r *
 		a.serverErrorResponse(w, r, err)
 		return
 	}
-
 }
 
-func (a *applicationDependences) deleteCommentHandler(w http.ResponseWriter, r *http.Request) {
+func (a *applicationDependences) deleteProductHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := a.readIDParam(r)
 	if err != nil {
 		a.notFoundResponse(w, r)
 		return
 	}
-	err = a.productModel.Delete(id)
+	err = a.productModel.DeleteProducts(id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -212,12 +205,13 @@ func (a *applicationDependences) deleteCommentHandler(w http.ResponseWriter, r *
 	}
 }
 
-func (a *applicationDependences) listCommentHandler(w http.ResponseWriter, r *http.Request) {
+func (a *applicationDependences) listProductHandler(w http.ResponseWriter, r *http.Request) {
 	//create a struct to hold the query parameters
 	//Later, fields will be added for pagination and sorting (filters)
 	var queryParameterData struct {
-		Category string
-		Name     string
+		Category    string
+		Name        string
+		Description string
 		data.Fileters
 	}
 
@@ -227,12 +221,13 @@ func (a *applicationDependences) listCommentHandler(w http.ResponseWriter, r *ht
 	//load the query parameters into the created struct
 	queryParameterData.Category = a.getSingleQueryParameter(queryParameter, "category", "")
 	queryParameterData.Name = a.getSingleQueryParameter(queryParameter, "name", "")
+	queryParameterData.Description = a.getSingleQueryParameter(queryParameter, "description", "")
 	v := validator.New()
 
 	queryParameterData.Fileters.Page = a.getSingleIntigerParameter(queryParameter, "page", 1, v)
 	queryParameterData.Fileters.PageSize = a.getSingleIntigerParameter(queryParameter, "page_size", 10, v)
 	queryParameterData.Fileters.Sorting = a.getSingleQueryParameter(queryParameter, "sorting", "id")
-	queryParameterData.Fileters.SortSafeList = []string{"id", "author", "-id", "-author"}
+	queryParameterData.Fileters.SortSafeList = []string{"id", "name", "-id", "-name"}
 
 	//check validity of filters
 	data.ValidateFilters(v, queryParameterData.Fileters)
@@ -242,7 +237,7 @@ func (a *applicationDependences) listCommentHandler(w http.ResponseWriter, r *ht
 	}
 
 	//call GetAll to retrieve all comments of the DB
-	products, metadata, err := a.productModel.GetAll(queryParameterData.Category, queryParameterData.Name, queryParameterData.Fileters)
+	products, metadata, err := a.productModel.GetAllProducts(queryParameterData.Category, queryParameterData.Name, queryParameterData.Description, queryParameterData.Fileters)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):

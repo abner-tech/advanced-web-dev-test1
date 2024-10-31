@@ -28,6 +28,7 @@ type applicationDependences struct {
 	config       serverConfig
 	logger       *slog.Logger
 	productModel data.ProductModel
+	reviewModel  data.ReviewModel
 }
 
 func main() {
@@ -56,6 +57,7 @@ func main() {
 		config:       settings,
 		logger:       logger,
 		productModel: data.ProductModel{DB: db},
+		reviewModel:  data.ReviewModel{DB: db},
 	}
 
 	apiServer := &http.Server{

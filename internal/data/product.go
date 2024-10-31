@@ -19,7 +19,7 @@ type Product struct {
 	Category      string    `json:"category"`
 	ImageUrl      string    `json:"image_url"`
 	AverageRating float32   `json:"average-rating"`
-	CreatedAt     time.Time `json:"-"`
+	CreatedAt     time.Time `json:"created_at"`
 	Version       int32     `json:"version"`
 }
 
@@ -29,8 +29,8 @@ type ProductModel struct {
 }
 
 // Insert Row to comments table
-// expects a pointer to the actual comment content
-func (c ProductModel) Insert(product *Product) error {
+// expects a pointer to the actual product content
+func (c ProductModel) InsertProduct(product *Product) error {
 	//the sql query to be executed against the database table
 	query := `
 	INSERT INTO products (name, description, price, category, image_url)
@@ -51,7 +51,6 @@ func (c ProductModel) Insert(product *Product) error {
 		&product.ID,
 		&product.CreatedAt,
 		&product.Version)
-
 }
 
 func ValidateProduct(v *validator.Validator, product *Product) {
@@ -73,15 +72,10 @@ func ValidateProduct(v *validator.Validator, product *Product) {
 	// Validate ImageUrl (ensure it is a valid URL format and not empty)
 	v.Check(product.ImageUrl != "", "image_url", "must be provided")
 	v.Check(len(product.ImageUrl) <= 200, "image_url", "must not be more than 200 bytes")
-	// Optionally, add a regex or specific URL validation if needed
-
-	// Validate AverageRating (ensure it is between 0 and 5, as a standard rating scale)
-	v.Check(product.AverageRating >= 0 && product.AverageRating <= 5, "average_rating", "must be between 0 and 5")
-
 }
 
 // get a comment from DB based on ID
-func (p ProductModel) Get(id int64) (*Product, error) {
+func (p ProductModel) GetProduct(id int64) (*Product, error) {
 	//check if the id is valid
 	if id < 1 {
 		return nil, ErrRecordNotFound
@@ -93,7 +87,7 @@ func (p ProductModel) Get(id int64) (*Product, error) {
 	WHERE id = $1
 	`
 
-	//declare a variable of type Comment to hold the returned values
+	//declare a variable of type Product to hold the returned values
 	var product Product
 
 	//set 3-second context/timer
@@ -123,21 +117,23 @@ func (p ProductModel) Get(id int64) (*Product, error) {
 	return &product, nil
 }
 
-func (p ProductModel) GetAll(content string, author string, filters Fileters) ([]*Product, Metadata, error) {
+func (p ProductModel) GetAllProducts(category string, name string, description string, filters Fileters) ([]*Product, Metadata, error) {
 	query := fmt.Sprintf(`
 	SELECT COUNT(*) OVER(), id, name, description, price, category, image_url, average_rating, created_at, version
 	FROM products
-	WHERE (to_tsvector('simple',description) @@
+	WHERE (to_tsvector('simple',category) @@
 		plainto_tsquery('simple', $1) OR $1 = '')
 	AND (to_tsvector('simple',name) @@
 		plainto_tsquery('simple',$2) OR $2 = '')
+	AND (to_tsvector('simple', description)@@
+		plainto_tsquery('simple', $3) OR $3 = '')
 	ORDER BY %s %s, id ASC
-	LIMIT $3 OFFSET $4
+	LIMIT $4 OFFSET $5
 	`, filters.sortColumn(), filters.sortDirection())
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	rows, err := p.DB.QueryContext(ctx, query, content, author, filters.limit(), filters.offset())
+	rows, err := p.DB.QueryContext(ctx, query, category, name, description, filters.limit(), filters.offset())
 	//check for errors
 	if err != nil {
 		switch {
@@ -171,18 +167,18 @@ func (p ProductModel) GetAll(content string, author string, filters Fileters) ([
 }
 
 // update  a specific record from the comments table
-func (p ProductModel) Update(product *Product) error {
+func (p ProductModel) UpdateProducts(product *Product) error {
 	//the sql query to be excecuted against the DB table
 	//Every time make an update, version number is incremented
 
 	query := `
-	UPDATE comments
-	SET content=$1, author=$2, version=version+1
-	WHERE id = $3
+	UPDATE products
+	SET name=$1, description=$2, price=$3, category=$4, image_url=$5, version=version+1
+	WHERE id = $6
 	RETURNING version
 	`
 
-	args := []any{product.AverageRating, product.Category, product.ID}
+	args := []any{product.Name, product.Description, product.Price, product.Category, product.ImageUrl, product.ID}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	return p.DB.QueryRowContext(ctx, query, args...).Scan(&product.Version)
@@ -190,7 +186,7 @@ func (p ProductModel) Update(product *Product) error {
 }
 
 // delete a specific comment form the comments table
-func (c ProductModel) Delete(id int64) error {
+func (p ProductModel) DeleteProducts(id int64) error {
 	//check if the id is valid
 	if id < 1 {
 		return ErrRecordNotFound
@@ -198,7 +194,7 @@ func (c ProductModel) Delete(id int64) error {
 
 	//sql querry to be excecuted against the database table
 	query := `
-	DELETE FROM comments
+	DELETE FROM products
 	WHERE id = $1
 	`
 
@@ -208,7 +204,7 @@ func (c ProductModel) Delete(id int64) error {
 	// ExecContext does not return any rows unlike QueryRowContext.
 	// It only returns  information about the the query execution
 	// such as how many rows were affected
-	result, err := c.DB.ExecContext(ctx, query, id)
+	result, err := p.DB.ExecContext(ctx, query, id)
 	if err != nil {
 		return err
 	}
@@ -223,4 +219,34 @@ func (c ProductModel) Delete(id int64) error {
 		return ErrRecordNotFound
 	}
 	return nil
+}
+
+func (p ProductModel) ProductExist(id int64) (int64, error) {
+	if id < 1 {
+		return 0, ErrRecordNotFound
+	}
+	query := `
+	SELECT id 
+	FROM products
+	WHERE id = $1
+	LIMIT 1
+	`
+
+	var Product Product
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := p.DB.QueryRowContext(ctx, query, id).Scan(&Product.ID)
+	//check for errors
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return 0, ErrRecordNotFound
+		default:
+			return 0, err
+		}
+	}
+
+	print(*&Product.ID)
+	return *&Product.ID, nil
 }

@@ -1,0 +1,5 @@
+curl -X POST http://localhost:4000/v1/products -H "Content-Type: application/json" -d '{"name":"RGB bg Gaming Keyboard","description":"keyboard with rgb colors lights and presets for a more colorful gaming","price":23.50,"category":"ELectronics","image_url":"https://m.media-amazon.com/images/I/61bBgWaeaiL._AC_SX466_.jpg" }'
+
+curl -X POST http://localhost:4000/v1/products -H "Content-Type: application/json" -d '{"name":"RGB bg Gaming Mouse","description":"mouse with rgb colors lights and presets for a more colorful gaming","price":24.99,"category":"ELectronics","image_url":"https://m.media-amazon.com/images/I/71x+cq3lNzL._AC_SL1500_.jpg" }'
+
+curl -X POST http://localhost:4000/v1/reviews/1 -H "Content-Type: application/json" -d '{"user_name":"abner", "rating":2, "review_text":"not bad"}'

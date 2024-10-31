@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS products (
     version integer NOT NULL DEFAULT 1
 );
 
+
 --script to create the reviews table
 CREATE TABLE IF NOT EXISTS reviews (
     id bigserial PRIMARY KEY,
@@ -20,7 +21,8 @@ CREATE TABLE IF NOT EXISTS reviews (
     rating INT CHECK(rating BETWEEN 1 AND 5), --rating value between 1 and 5
     review_text TEXT, --rating message
     helpful_count INT DEFAULT 0, --count to see amount of persons who found this rating helpful
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+    version integer NOT NULL DEFAULT 1
 );
 
 
@@ -32,9 +34,9 @@ BEGIN
     SET average_rating = (
         SELECT ROUND(AVG(rating), 2)
         FROM reviews
-        WHERE products.id = NEW.product_id
+        WHERE products_id = NEW.product_id
     )
-    WHERE id = NEW.procuct_id;
+    WHERE id = NEW.product_id;
 
     RETURN NEW;
 END;

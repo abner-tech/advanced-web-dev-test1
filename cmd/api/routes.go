@@ -16,12 +16,16 @@ func (a *applicationDependences) routes() http.Handler {
 	//method 404
 	router.NotFound = http.HandlerFunc(a.notFoundResponse)
 
-	//setup routes
+	//setup routes for the products table database interaction
 	router.HandlerFunc(http.MethodGet, "/v1/healthcheck", a.healthChechHandler)
 	router.HandlerFunc(http.MethodPost, "/v1/products", a.createProductHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/product/:id", a.displayProductHandler)
-	router.HandlerFunc(http.MethodPatch, "/v1/comments/:id", a.updateCommentHandler)
-	router.HandlerFunc(http.MethodDelete, "/v1/comments/:id", a.deleteCommentHandler)
-	router.HandlerFunc(http.MethodGet, "/v1/products", a.listCommentHandler)
+	router.HandlerFunc(http.MethodPatch, "/v1/product/:id", a.updateProductHandler)
+	router.HandlerFunc(http.MethodDelete, "/v1/product/:id", a.deleteProductHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/products", a.listProductHandler)
+
+	//setup routes for the reviews table database interactions
+	router.HandlerFunc(http.MethodPost, "/v1/reviews/:id", a.create_P_ReviewHandler)
+
 	return a.recoverPanic(router)
 }
