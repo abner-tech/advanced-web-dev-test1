@@ -182,7 +182,6 @@ func (p ProductModel) UpdateProducts(product *Product) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	return p.DB.QueryRowContext(ctx, query, args...).Scan(&product.Version)
-
 }
 
 // delete a specific comment form the comments table

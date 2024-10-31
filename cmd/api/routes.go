@@ -27,6 +27,7 @@ func (a *applicationDependences) routes() http.Handler {
 	//setup routes for the reviews table database interactions
 	router.HandlerFunc(http.MethodPost, "/v1/reviews/:id", a.create_P_ReviewHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/product/:pid/review/:rid", a.listSingleProductReviewHandler)
+	router.HandlerFunc(http.MethodPatch, "/v1/product/:pid/review/:rid", a.updateProductReviewByID)
 
 	return a.recoverPanic(router)
 }

@@ -94,5 +94,17 @@ func (r ReviewModel) GetReviewByIDS(rid int64, pid int64) (*Review, error) {
 		}
 	}
 	return &review, nil
+}
 
+func (r ReviewModel) UpdateReview(review *Review) error {
+	query := `
+	UPDATE reviews
+	SET rating = $1, review_text=$2, version=version+1
+	WHERE id=$3 AND product_id=$4
+	RETURNING version
+	`
+	args := []any{review.Rating, review.ReviewText, review.ID, review.ProductID}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	return r.DB.QueryRowContext(ctx, query, args...).Scan(&review.Version)
 }

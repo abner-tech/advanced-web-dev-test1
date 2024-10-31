@@ -111,3 +111,56 @@ func (a *applicationDependences) listSingleProductReviewHandler(w http.ResponseW
 		a.serverErrorResponse(w, r, err)
 	}
 }
+
+func (a *applicationDependences) updateProductReviewByID(w http.ResponseWriter, r *http.Request) {
+	//getting review with 2 passed in parameters (review id and product id)
+	review, err := a.fetchReviewByID(w, r)
+	if err != nil {
+		//error have already been printed at fetchReviewByID() so we just return
+		return
+	}
+
+	//just declare info which can be updated by person from the existing review
+	var incomingData struct {
+		Rating     *int8   `json:"rating"`
+		ReviewText *string `json:"review_text"`
+	}
+
+	//decoding
+	err = a.readJSON(w, r, &incomingData)
+	if err != nil {
+		a.badRequestResponse(w, r, err)
+		return
+	}
+
+	//verifying which fields have been changed
+	if incomingData.Rating != nil {
+		review.Rating = *incomingData.Rating
+	}
+	if incomingData.ReviewText != nil {
+		review.ReviewText = *incomingData.ReviewText
+	}
+
+	//validate
+	v := validator.New()
+	data.ValidateReview(v, review)
+	if !v.IsEmpty() {
+		a.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	//continue with update
+	err = a.reviewModel.UpdateReview(review)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+		return
+	}
+
+	data := envelope{
+		"review": review,
+	}
+	err = a.writeJSON(w, http.StatusOK, data, nil)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+	}
+}

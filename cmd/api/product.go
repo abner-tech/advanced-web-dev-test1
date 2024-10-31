@@ -116,6 +116,7 @@ func (a *applicationDependences) updateProductHandler(w http.ResponseWriter, r *
 
 	product, err := a.fetchProductByID(w, r)
 	if err != nil {
+		//error has been printed at fetchProductByID so we just return
 		return
 	}
 
