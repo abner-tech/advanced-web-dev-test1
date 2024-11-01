@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/abner-tech/Test1/internal/validator"
@@ -107,4 +108,88 @@ func (r ReviewModel) UpdateReview(review *Review) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	return r.DB.QueryRowContext(ctx, query, args...).Scan(&review.Version)
+}
+
+func (r ReviewModel) DeleteReview(pid int64, rid int64) error {
+	//checking if both id's are valid
+	if pid < 1 || rid < 1 {
+		return ErrRecordNotFound
+	}
+
+	//sql querry to delete record from reviews table
+	query := `
+	DELETE FROM reviews
+	WHERE id = $1 AND product_id = $2
+	`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	result, err := r.DB.ExecContext(ctx, query, rid, pid)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return ErrRecordNotFound
+	}
+	return nil
+}
+
+func (r ReviewModel) GetAppReviews(reviewText string, name string, filters Filters) ([]*Review, Metadata, error) {
+	query := fmt.Sprintf(`
+	SELECT COUNT(*) OVER(), id, product_id, user_name, rating, review_text, helpful_count, created_at, version
+	FROM reviews
+	WHERE (to_tsvector('simple', review_text) @@
+		plainto_tsquery('simple',$1) OR $1 = '')
+	AND (to_tsvector('simple', user_name) @@
+		plainto_tsquery('simple',$2) OR $2 = '')
+	ORDER BY %s %s, id ASC
+	LIMIT $3 OFFSET $4
+	`, filters.sortColumn(), filters.sortDirection())
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	rows, err := r.DB.QueryContext(ctx, query, reviewText, name, filters.limit(), filters.offset())
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, Metadata{}, err
+		default:
+			return nil, Metadata{}, err
+		}
+	}
+	defer rows.Close()
+	totalRecords := 0
+	reviews := []*Review{}
+
+	for rows.Next() {
+		var rev Review
+		err := rows.Scan(&totalRecords,
+			&rev.ID,
+			&rev.ProductID,
+			&rev.UserName,
+			&rev.Rating,
+			&rev.ReviewText,
+			&rev.HelpfulCount,
+			&rev.CreatedAt,
+			&rev.Version,
+		)
+		if err != nil {
+			return nil, Metadata{}, err
+		}
+		reviews = append(reviews, &rev)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, Metadata{}, err
+	}
+
+	metadata := calculateMetaData(totalRecords, filters.Page, filters.PageSize)
+	return reviews, metadata, nil
 }

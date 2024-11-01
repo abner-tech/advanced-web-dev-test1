@@ -117,7 +117,7 @@ func (p ProductModel) GetProduct(id int64) (*Product, error) {
 	return &product, nil
 }
 
-func (p ProductModel) GetAllProducts(category string, name string, description string, filters Fileters) ([]*Product, Metadata, error) {
+func (p ProductModel) GetAllProducts(category string, name string, description string, filters Filters) ([]*Product, Metadata, error) {
 	query := fmt.Sprintf(`
 	SELECT COUNT(*) OVER(), id, name, description, price, category, image_url, average_rating, created_at, version
 	FROM products

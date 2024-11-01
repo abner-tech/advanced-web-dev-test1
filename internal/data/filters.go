@@ -9,7 +9,7 @@ import (
 //the Filters type will contain the fields related to pagination
 //and eventually the fields related to sorting
 
-type Fileters struct {
+type Filters struct {
 	Page         int //which page number does the client want
 	PageSize     int //how many records per page
 	Sorting      string
@@ -27,7 +27,7 @@ type Metadata struct {
 //we validate page and Page size
 //follow same approach used to validate a comment
 
-func ValidateFilters(v *validator.Validator, f Fileters) {
+func ValidateFilters(v *validator.Validator, f Filters) {
 	v.Check(f.Page > 0, "page", "must be greater than zero")
 	v.Check(f.Page <= 500, "page", "must be a maximim of 500")
 	v.Check(f.PageSize > 0, "page_size", "must be greator than zero")
@@ -38,13 +38,13 @@ func ValidateFilters(v *validator.Validator, f Fileters) {
 }
 
 // calculate how many results to send back
-func (f Fileters) limit() int {
+func (f Filters) limit() int {
 	return f.PageSize
 }
 
 // calculate the offset so that we remember how many records have been sent
 // and how many remain to be sent
-func (f Fileters) offset() int {
+func (f Filters) offset() int {
 	return (f.Page - 1) * f.PageSize
 }
 
@@ -62,7 +62,7 @@ func calculateMetaData(totalRecords int, currentPage int, pageSize int) Metadata
 	}
 }
 
-func (f Fileters) sortColumn() string {
+func (f Filters) sortColumn() string {
 	//implementing sorting feature
 	for _, safeValue := range f.SortSafeList {
 		if f.Sorting == safeValue {
@@ -76,7 +76,7 @@ func (f Fileters) sortColumn() string {
 }
 
 // get the sort order
-func (f Fileters) sortDirection() string {
+func (f Filters) sortDirection() string {
 	if strings.HasPrefix(f.Sorting, "-") {
 		return "DESC"
 	}

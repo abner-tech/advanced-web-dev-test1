@@ -112,7 +112,7 @@ func (a *applicationDependences) listSingleProductReviewHandler(w http.ResponseW
 	}
 }
 
-func (a *applicationDependences) updateProductReviewByID(w http.ResponseWriter, r *http.Request) {
+func (a *applicationDependences) updateProductReviewByIDS_Handler(w http.ResponseWriter, r *http.Request) {
 	//getting review with 2 passed in parameters (review id and product id)
 	review, err := a.fetchReviewByID(w, r)
 	if err != nil {
@@ -162,5 +162,87 @@ func (a *applicationDependences) updateProductReviewByID(w http.ResponseWriter, 
 	err = a.writeJSON(w, http.StatusOK, data, nil)
 	if err != nil {
 		a.serverErrorResponse(w, r, err)
+	}
+}
+
+func (a *applicationDependences) deleteReviewByIDS_Handler(w http.ResponseWriter, r *http.Request) {
+
+	//first retrieve the id parameters for record to be deleted
+	//pid=product.id and rid=review.id
+	pid, err := a.readIDParam(r, "pid")
+	rid, err := a.readIDParam(r, "rid")
+	//using one if loop to check error for both pid and rid retrieval
+	if err != nil {
+		a.notFoundResponse(w, r)
+		return
+	}
+
+	err = a.reviewModel.DeleteReview(pid, rid)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			a.notFoundResponse(w, r)
+		default:
+			a.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	//displaying the deleted message
+	data := envelope{
+		"message": fmt.Sprintf("review with review id: %d and product id: %d deletet sucessfully", rid, pid),
+	}
+	err = a.writeJSON(w, http.StatusOK, data, nil)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+	}
+}
+
+func (a *applicationDependences) listReviewHandler(w http.ResponseWriter, r *http.Request) {
+	//fields added for pagination and sorting
+	var queryParameterData struct {
+		ReviewText string
+		UserName   string
+		data.Filters
+	}
+
+	//get query parameters from url
+	queryParameter := r.URL.Query()
+	queryParameterData.ReviewText = a.getSingleQueryParameter(queryParameter, "review_text", "")
+	queryParameterData.UserName = a.getSingleQueryParameter(queryParameter, "user_name", "")
+	v := validator.New()
+
+	queryParameterData.Filters.Page = a.getSingleIntigerParameter(queryParameter, "page", 1, v)
+	queryParameterData.Filters.PageSize = a.getSingleIntigerParameter(queryParameter, "page_size", 10, v)
+	queryParameterData.Filters.Sorting = a.getSingleQueryParameter(queryParameter, "sorting", "id")
+	queryParameterData.Filters.SortSafeList = []string{"id", "id", "-id", "-id"}
+
+	//validate pagination filters
+	data.ValidateFilters(v, queryParameterData.Filters)
+	if !v.IsEmpty() {
+		a.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	//call getAllReviews to retrieev all reviews from the DB
+	reviews, metadata, err := a.reviewModel.GetAppReviews(queryParameterData.ReviewText, queryParameterData.UserName, queryParameterData.Filters)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			a.notFoundResponse(w, r)
+			return
+		default:
+			a.serverErrorResponse(w, r, err)
+			return
+		}
+	}
+
+	data := envelope{
+		"products":  reviews,
+		"@metadata": metadata,
+	}
+	err = a.writeJSON(w, http.StatusOK, data, nil)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+		return
 	}
 }

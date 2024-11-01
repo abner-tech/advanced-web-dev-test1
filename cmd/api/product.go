@@ -214,7 +214,7 @@ func (a *applicationDependences) listProductHandler(w http.ResponseWriter, r *ht
 		Category    string
 		Name        string
 		Description string
-		data.Fileters
+		data.Filters
 	}
 
 	//get query parameters from url
@@ -226,20 +226,20 @@ func (a *applicationDependences) listProductHandler(w http.ResponseWriter, r *ht
 	queryParameterData.Description = a.getSingleQueryParameter(queryParameter, "description", "")
 	v := validator.New()
 
-	queryParameterData.Fileters.Page = a.getSingleIntigerParameter(queryParameter, "page", 1, v)
-	queryParameterData.Fileters.PageSize = a.getSingleIntigerParameter(queryParameter, "page_size", 10, v)
-	queryParameterData.Fileters.Sorting = a.getSingleQueryParameter(queryParameter, "sorting", "id")
-	queryParameterData.Fileters.SortSafeList = []string{"id", "id", "-id", "-id"}
+	queryParameterData.Filters.Page = a.getSingleIntigerParameter(queryParameter, "page", 1, v)
+	queryParameterData.Filters.PageSize = a.getSingleIntigerParameter(queryParameter, "page_size", 10, v)
+	queryParameterData.Filters.Sorting = a.getSingleQueryParameter(queryParameter, "sorting", "id")
+	queryParameterData.Filters.SortSafeList = []string{"id", "id", "-id", "-id"}
 
 	//check validity of filters
-	data.ValidateFilters(v, queryParameterData.Fileters)
+	data.ValidateFilters(v, queryParameterData.Filters)
 	if !v.IsEmpty() {
 		a.failedValidationResponse(w, r, v.Errors)
 		return
 	}
 
 	//call GetAll to retrieve all comments of the DB
-	products, metadata, err := a.productModel.GetAllProducts(queryParameterData.Category, queryParameterData.Name, queryParameterData.Description, queryParameterData.Fileters)
+	products, metadata, err := a.productModel.GetAllProducts(queryParameterData.Category, queryParameterData.Name, queryParameterData.Description, queryParameterData.Filters)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
