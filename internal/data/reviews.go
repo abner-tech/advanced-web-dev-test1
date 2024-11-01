@@ -141,30 +141,42 @@ func (r ReviewModel) DeleteReview(pid int64, rid int64) error {
 	return nil
 }
 
-func (r ReviewModel) GetAppReviews(reviewText string, name string, filters Filters) ([]*Review, Metadata, error) {
+func (r ReviewModel) GetAppReviews(reviewText string, name string, filters Filters, productID int64) ([]*Review, Metadata, error) {
+	// Base query with placeholders for reviewText and name filtering
 	query := fmt.Sprintf(`
 	SELECT COUNT(*) OVER(), id, product_id, user_name, rating, review_text, helpful_count, created_at, version
 	FROM reviews
-	WHERE (to_tsvector('simple', review_text) @@
-		plainto_tsquery('simple',$1) OR $1 = '')
-	AND (to_tsvector('simple', user_name) @@
-		plainto_tsquery('simple',$2) OR $2 = '')
-	ORDER BY %s %s, id ASC
-	LIMIT $3 OFFSET $4
-	`, filters.sortColumn(), filters.sortDirection())
+	WHERE (to_tsvector('simple', review_text) @@ plainto_tsquery('simple', $1) OR $1 = '')
+	AND (to_tsvector('simple', user_name) @@ plainto_tsquery('simple', $2) OR $2 = '')
+	`)
+
+	// Add an additional condition if productID is non-zero
+	args := []interface{}{reviewText, name}
+	if productID != 0 {
+		query += "AND product_id = $3 "
+		args = append(args, productID)
+	}
+
+	// Add ordering and pagination
+	query += fmt.Sprintf("ORDER BY %s %s, id ASC LIMIT $%d OFFSET $%d",
+		filters.sortColumn(),
+		filters.sortDirection(),
+		len(args)+1, // LIMIT placeholder index
+		len(args)+2, // OFFSET placeholder index
+	)
+	args = append(args, filters.limit(), filters.offset())
+
+	// Create context
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	rows, err := r.DB.QueryContext(ctx, query, reviewText, name, filters.limit(), filters.offset())
+	// Execute query
+	rows, err := r.DB.QueryContext(ctx, query, args...)
 	if err != nil {
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			return nil, Metadata{}, err
-		default:
-			return nil, Metadata{}, err
-		}
+		return nil, Metadata{}, err
 	}
 	defer rows.Close()
+
 	totalRecords := 0
 	reviews := []*Review{}
 

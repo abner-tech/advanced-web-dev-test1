@@ -170,6 +170,10 @@ func (a *applicationDependences) deleteReviewByIDS_Handler(w http.ResponseWriter
 	//first retrieve the id parameters for record to be deleted
 	//pid=product.id and rid=review.id
 	pid, err := a.readIDParam(r, "pid")
+	if err != nil {
+		a.notFoundResponse(w, r)
+		return
+	}
 	rid, err := a.readIDParam(r, "rid")
 	//using one if loop to check error for both pid and rid retrieval
 	if err != nil {
@@ -199,6 +203,12 @@ func (a *applicationDependences) deleteReviewByIDS_Handler(w http.ResponseWriter
 }
 
 func (a *applicationDependences) listReviewHandler(w http.ResponseWriter, r *http.Request) {
+	productID, err := a.readIDParam(r, "pid")
+	if err != nil || productID < 1 {
+		//to avoid return
+		productID = 0
+	}
+
 	//fields added for pagination and sorting
 	var queryParameterData struct {
 		ReviewText string
@@ -224,7 +234,7 @@ func (a *applicationDependences) listReviewHandler(w http.ResponseWriter, r *htt
 		return
 	}
 	//call getAllReviews to retrieev all reviews from the DB
-	reviews, metadata, err := a.reviewModel.GetAppReviews(queryParameterData.ReviewText, queryParameterData.UserName, queryParameterData.Filters)
+	reviews, metadata, err := a.reviewModel.GetAppReviews(queryParameterData.ReviewText, queryParameterData.UserName, queryParameterData.Filters, productID)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):

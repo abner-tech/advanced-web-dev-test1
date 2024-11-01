@@ -30,6 +30,7 @@ func (a *applicationDependences) routes() http.Handler {
 	router.HandlerFunc(http.MethodPatch, "/v1/product/:pid/review/:rid", a.updateProductReviewByIDS_Handler)
 	router.HandlerFunc(http.MethodDelete, "/v1/product/:pid/review/:rid", a.deleteReviewByIDS_Handler)
 	router.HandlerFunc(http.MethodGet, "/v1/reviews", a.listReviewHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/prod/reviews/:pid", a.listReviewHandler)
 
 	return a.recoverPanic(router)
 }
