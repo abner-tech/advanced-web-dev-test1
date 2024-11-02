@@ -68,7 +68,7 @@ func (a *applicationDependences) create_P_ReviewHandler(w http.ResponseWriter, r
 	}
 }
 
-func (a *applicationDependences) fetchReviewByID(w http.ResponseWriter, r *http.Request) (*data.Review, error) {
+func (a *applicationDependences) fetchReviewByIDS(w http.ResponseWriter, r *http.Request) (*data.Review, error) {
 	pid, err := a.readIDParam(r, "pid")
 	if err != nil {
 		a.notFoundResponse(w, r)
@@ -96,7 +96,7 @@ func (a *applicationDependences) fetchReviewByID(w http.ResponseWriter, r *http.
 }
 
 func (a *applicationDependences) listSingleProductReviewHandler(w http.ResponseWriter, r *http.Request) {
-	review, err := a.fetchReviewByID(w, r)
+	review, err := a.fetchReviewByIDS(w, r)
 	if err != nil {
 		//error was already printed before so we just come out of function
 		return
@@ -114,7 +114,7 @@ func (a *applicationDependences) listSingleProductReviewHandler(w http.ResponseW
 
 func (a *applicationDependences) updateProductReviewByIDS_Handler(w http.ResponseWriter, r *http.Request) {
 	//getting review with 2 passed in parameters (review id and product id)
-	review, err := a.fetchReviewByID(w, r)
+	review, err := a.fetchReviewByIDS(w, r)
 	if err != nil {
 		//error have already been printed at fetchReviewByID() so we just return
 		return
@@ -255,4 +255,35 @@ func (a *applicationDependences) listReviewHandler(w http.ResponseWriter, r *htt
 		a.serverErrorResponse(w, r, err)
 		return
 	}
+}
+
+func (a *applicationDependences) increaseHelpfulCount(w http.ResponseWriter, r *http.Request) {
+	//fetch review id from url
+	reviewID, err := a.readIDParam(r, "rid")
+	if err != nil {
+		a.notFoundResponse(w, r)
+		return
+	}
+
+	review, err := a.reviewModel.GetAndIncrementHelpfulCount(reviewID)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			a.notFoundResponse(w, r)
+			return
+		default:
+			a.serverErrorResponse(w, r, err)
+			return
+		}
+
+	}
+
+	data := envelope{
+		"review": review,
+	}
+	err = a.writeJSON(w, http.StatusOK, data, nil)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+	}
+
 }

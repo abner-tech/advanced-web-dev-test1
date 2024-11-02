@@ -146,8 +146,12 @@ func (r ReviewModel) GetAppReviews(reviewText string, name string, filters Filte
 	query := fmt.Sprintf(`
 	SELECT COUNT(*) OVER(), id, product_id, user_name, rating, review_text, helpful_count, created_at, version
 	FROM reviews
-	WHERE (to_tsvector('simple', review_text) @@ plainto_tsquery('simple', $1) OR $1 = '')
-	AND (to_tsvector('simple', user_name) @@ plainto_tsquery('simple', $2) OR $2 = '')
+	WHERE 
+		(to_tsvector('simple', review_text) @@
+		plainto_tsquery('simple', $1) OR $1 = '')
+	AND 
+		(to_tsvector('simple', user_name)
+		@@ plainto_tsquery('simple', $2) OR $2 = '')
 	`)
 
 	// Add an additional condition if productID is non-zero
@@ -204,4 +208,37 @@ func (r ReviewModel) GetAppReviews(reviewText string, name string, filters Filte
 
 	metadata := calculateMetaData(totalRecords, filters.Page, filters.PageSize)
 	return reviews, metadata, nil
+}
+
+func (r ReviewModel) GetAndIncrementHelpfulCount(rid int64) (*Review, error) {
+	// First, retrieve the review and increment the helpful count if it exists.
+	query := `
+		UPDATE reviews
+		SET helpful_count = helpful_count + 1
+		WHERE id = $1
+		RETURNING id, product_id, user_name, rating, review_text, helpful_count, created_at, version
+	`
+	var review Review
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := r.DB.QueryRowContext(ctx, query, rid).Scan(
+		&review.ID,
+		&review.ProductID,
+		&review.UserName,
+		&review.Rating,
+		&review.ReviewText,
+		&review.HelpfulCount,
+		&review.CreatedAt,
+		&review.Version,
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	return &review, nil
 }

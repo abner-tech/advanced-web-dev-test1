@@ -41,8 +41,11 @@ func (a *applicationDependences) routes() http.Handler {
 	router.HandlerFunc(http.MethodDelete, "/v1/product/:pid/review/:rid", a.deleteReviewByIDS_Handler)
 	//display all reviews
 	router.HandlerFunc(http.MethodGet, "/v1/reviews", a.listReviewHandler)
-	//display a specific review for a specific product
+	//display a// review for a specific product
 	router.HandlerFunc(http.MethodGet, "/v1/prod/reviews/:pid", a.listReviewHandler)
+
+	//setup route for the reviews table in regards to helpful count
+	router.HandlerFunc(http.MethodPatch, "/v1/HelpfulCount/:rid", a.increaseHelpfulCount)
 
 	return a.recoverPanic(router)
 }

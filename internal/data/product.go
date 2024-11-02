@@ -231,11 +231,11 @@ func (p ProductModel) ProductExist(id int64) (int64, error) {
 	LIMIT 1
 	`
 
-	var Product Product
+	var product Product
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := p.DB.QueryRowContext(ctx, query, id).Scan(&Product.ID)
+	err := p.DB.QueryRowContext(ctx, query, id).Scan(&product.ID)
 	//check for errors
 	if err != nil {
 		switch {
@@ -246,6 +246,5 @@ func (p ProductModel) ProductExist(id int64) (int64, error) {
 		}
 	}
 
-	print(*&Product.ID)
-	return *&Product.ID, nil
+	return *&product.ID, nil
 }
