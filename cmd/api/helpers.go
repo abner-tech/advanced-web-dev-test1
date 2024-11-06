@@ -114,13 +114,13 @@ func (a *applicationDependences) getSingleQueryParameter(queryParameter url.Valu
 	return result
 }
 
-func (a *applicationDependences) getMultipleQueryParameters(queryParameter url.Values, key string, defaultValue []string) []string {
-	result := queryParameter.Get(key)
-	if result == "" {
-		return defaultValue
-	}
-	return strings.Split(result, ",")
-}
+// func (a *applicationDependences) getMultipleQueryParameters(queryParameter url.Values, key string, defaultValue []string) []string {
+// 	result := queryParameter.Get(key)
+// 	if result == "" {
+// 		return defaultValue
+// 	}
+// 	return strings.Split(result, ",")
+// }
 
 // NOTE: this method can cause validation errors when attempting to convert from string to valid int value
 func (a *applicationDependences) getSingleIntigerParameter(queryParameter url.Values, key string, defaultValue int, v *validator.Validator) int {
