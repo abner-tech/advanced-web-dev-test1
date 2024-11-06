@@ -4,9 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"flag"
-	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"time"
 
@@ -69,17 +67,17 @@ func main() {
 		reviewModel:  data.ReviewModel{DB: db},
 	}
 
-	apiServer := &http.Server{
-		Addr:         fmt.Sprintf(":%d", settings.port),
-		Handler:      appInstance.routes(),
-		IdleTimeout:  time.Minute,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
-	}
+	// apiServer := &http.Server{
+	// 	Addr:         fmt.Sprintf(":%d", settings.port),
+	// 	Handler:      appInstance.routes(),
+	// 	IdleTimeout:  time.Minute,
+	// 	ReadTimeout:  5 * time.Second,
+	// 	WriteTimeout: 10 * time.Second,
+	// 	ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
+	// }
 
-	logger.Info("Starting Server", "address", apiServer.Addr, "environment", settings.environment, "rateLimiter", settings.limiter)
-	err = apiServer.ListenAndServe()
+	// logger.Info("Starting Server", "address", apiServer.Addr, "environment", settings.environment, "rateLimiter", settings.limiter)
+	err = appInstance.serve()
 	if err != nil {
 		logger.Error(err.Error())
 		os.Exit(1)
