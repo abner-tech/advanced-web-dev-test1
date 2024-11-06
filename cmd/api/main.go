@@ -22,6 +22,11 @@ type serverConfig struct {
 	db          struct {
 		dsn string
 	}
+	limiter struct {
+		rps     float64
+		burst   int
+		enabled bool
+	}
 }
 
 type applicationDependences struct {
@@ -37,6 +42,10 @@ func main() {
 	flag.StringVar(&settings.environment, "env", "development", "Environment(development|staging|production)")
 	//read the dsn
 	flag.StringVar(&settings.db.dsn, "db-dsn", "postgres://test1:test1@localhost/test1?sslmode=disable", "PostgreSQL DSN")
+	flag.Float64Var(&settings.limiter.rps, "limiter-rps", 2, "Rate Limiter maximum requests per second")
+	flag.IntVar(&settings.limiter.burst, "limiter-burst", 5, "Rate Limiter maximum burst")
+	flag.BoolVar(&settings.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
+
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -69,7 +78,7 @@ func main() {
 		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
 
-	logger.Info("Starting Server", "address", apiServer.Addr, "environment", settings.environment)
+	logger.Info("Starting Server", "address", apiServer.Addr, "environment", settings.environment, "rateLimiter", settings.limiter)
 	err = apiServer.ListenAndServe()
 	if err != nil {
 		logger.Error(err.Error())

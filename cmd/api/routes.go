@@ -47,5 +47,5 @@ func (a *applicationDependences) routes() http.Handler {
 	//setup route for the reviews table in regards to helpful count
 	router.HandlerFunc(http.MethodPatch, "/v1/HelpfulCount/:rid", a.increaseHelpfulCount)
 
-	return a.recoverPanic(router)
+	return a.recoverPanic(a.rateLimiting(router))
 }
